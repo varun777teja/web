@@ -1,6 +1,8 @@
 
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// FIX: Corrected import path for App component.
 import App from './App';
 
 const rootElement = document.getElementById('root');
@@ -14,4 +16,3 @@ root.render(
     <App />
   </React.StrictMode>
 );
-   

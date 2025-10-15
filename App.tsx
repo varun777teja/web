@@ -1,240 +1,312 @@
 import React, { useState, useEffect } from 'react';
-import { Page, Product, User, ShippingDetails, Order } from './types';
+import { Page, Product, User, ShippingDetails, Order, OrderStatus } from './types';
+import * as db from './db';
+
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Hero from './components/Hero';
 import ProductGrid from './components/ProductGrid';
-import WelcomeBanner from './components/WelcomeBanner';
 import LoginPage from './components/LoginPage';
-import CheckoutPage from './components/CheckoutPage';
 import CartPage from './components/CartPage';
+import CheckoutPage from './components/CheckoutPage';
 import Sidebar from './components/Sidebar';
 import UserProfilePage from './components/UserProfilePage';
 import OrdersPage from './components/OrdersPage';
 import AddressesPage from './components/AddressesPage';
+import OrderConfirmationPage from './components/OrderConfirmationPage';
+import AdminPage from './components/AdminPage';
+import ProductDetailPage from './components/ProductDetailPage';
 
+function App() {
+  const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
+  const [previousPage, setPreviousPage] = useState<Page>(Page.Home);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cartItems, setCartItems] = useState<Product[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [addresses, setAddresses] = useState<ShippingDetails[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [allUsers, setAllUsers] = useState<Omit<User, 'password'>[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-const ALL_PRODUCTS: Product[] = [
-    { id: 1, name: 'Adventure Sticker Pack', price: '12.99', imageUrl: 'https://picsum.photos/seed/sticker1/400/400', category: 'sticker', description: 'Explore the world with these vibrant travel-themed stickers.' },
-    { id: 2, name: 'Glossy Photo Prints (4x6)', price: '19.50', imageUrl: 'https://picsum.photos/seed/photo1/400/400', category: 'photo', description: 'Bring your memories to life with our premium glossy prints.' },
-    { id: 3, name: 'Holographic Alien Stickers', price: '15.00', imageUrl: 'https://picsum.photos/seed/sticker2/400/400', category: 'sticker', description: 'Out of this world! Shiny, holographic stickers for your gear.' },
-    { id: 4, name: 'Minimalist Sticker Sheet', price: '9.99', imageUrl: 'https://picsum.photos/seed/sticker3/400/400', category: 'sticker', description: 'For the modern aesthetic. Clean lines, simple designs.' },
-    { id: 5, name: 'Matte Finish Photo Set (5x7)', price: '24.99', imageUrl: 'https://picsum.photos/seed/photo2/400/400', category: 'photo', description: 'A sophisticated matte finish for your favorite moments.' },
-    { id: 6, name: 'Cute Animal Sticker Pack', price: '13.50', imageUrl: 'https://picsum.photos/seed/sticker4/400/400', category: 'sticker', description: 'An adorable collection of your favorite furry friends.' },
-    { id: 7, name: 'Polaroid Style Prints', price: '18.00', imageUrl: 'https://picsum.photos/seed/photo3/400/400', category: 'photo', description: 'Classic instant-film look for a touch of nostalgia.' },
-    { id: 8, 'name': 'Synthwave Sunset Stickers', price: '14.00', imageUrl: 'https://picsum.photos/seed/sticker5/400/400', category: 'sticker', description: 'Retro 80s vibes for your laptop, car, or water bottle.' },
-];
+  const isLoggedIn = currentUser !== null;
+  
+  // Initial data fetching
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      const [fetchedProducts, fetchedUsers, fetchedOrders] = await Promise.all([
+        db.getProducts(),
+        db.getAllUsers(),
+        db.getOrders(),
+      ]);
+      setProducts(fetchedProducts);
+      setAllUsers(fetchedUsers);
+      setOrders(fetchedOrders);
+      setIsLoading(false);
+    };
+    fetchInitialData();
+  }, []);
 
-const App: React.FC = () => {
-    const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
-    const [cartItems, setCartItems] = useState<Product[]>([]);
-    const [filteredProducts, setFilteredProducts] = useState<Product[]>(ALL_PRODUCTS);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [checkoutItems, setCheckoutItems] = useState<Product[]>([]);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [orderHistory, setOrderHistory] = useState<Order[]>([]);
-    const [userAddresses, setUserAddresses] = useState<ShippingDetails[]>([]);
+  const handleAddToCart = (product: Product) => {
+    setCartItems(prev => [...prev, product]);
+  };
+  
+  const handleBuyNow = (product: Product) => {
+    setCartItems(prev => [...prev, product]);
+    setCurrentPage(Page.Cart);
+  };
 
-    const isLoggedIn = currentUser !== null;
-    const cartCount = cartItems.length;
+  const handleRemoveFromCart = (productId: number) => {
+    setCartItems(prev => prev.filter(item => item.id !== productId));
+  };
+  
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    if (user.email === 'nuravhost@outlook.com') {
+      setIsAdmin(true);
+    }
+    setCurrentPage(Page.Home);
+  };
 
-    // Load data from localStorage on initial render
-    useEffect(() => {
-        const loadFromStorage = (key: string, setter: Function) => {
-            try {
-                const storedValue = localStorage.getItem(key);
-                if (storedValue) {
-                    setter(JSON.parse(storedValue));
-                }
-            } catch (error) {
-                console.error(`Failed to parse ${key} from localStorage`, error);
-            }
-        };
-        loadFromStorage('polaroidPioneerCart', setCartItems);
-        loadFromStorage('polaroidPioneerOrders', setOrderHistory);
-        loadFromStorage('polaroidPioneerAddresses', setUserAddresses);
-    }, []);
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setIsAdmin(false);
+    setIsSidebarOpen(false);
+    setCurrentPage(Page.Home);
+  };
 
-    // Save data to localStorage whenever it changes
-    useEffect(() => {
-        localStorage.setItem('polaroidPioneerCart', JSON.stringify(cartItems));
-    }, [cartItems]);
-     useEffect(() => {
-        localStorage.setItem('polaroidPioneerOrders', JSON.stringify(orderHistory));
-    }, [orderHistory]);
-     useEffect(() => {
-        localStorage.setItem('polaroidPioneerAddresses', JSON.stringify(userAddresses));
-    }, [userAddresses]);
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen(prev => !prev);
+  };
+  
+  const handleSidebarNavigate = (page: Page) => {
+    setCurrentPage(page);
+    setIsSidebarOpen(false);
+  };
 
-
-    useEffect(() => {
-        if (currentPage === Page.Home) {
-            setFilteredProducts(ALL_PRODUCTS);
-        } else if (currentPage === Page.Stickers) {
-            setFilteredProducts(ALL_PRODUCTS.filter(p => p.category === 'sticker'));
-        } else if (currentPage === Page.PhotoPrints) {
-            setFilteredProducts(ALL_PRODUCTS.filter(p => p.category === 'photo'));
+  const handlePlaceOrder = async (shippingDetails: ShippingDetails, paymentMethod: string) => {
+    const newOrderData = {
+        products: cartItems,
+        shippingDetails,
+        orderDate: new Date().toISOString(),
+        totalPrice: cartItems.reduce((total, item) => total + parseFloat(item.price), 0).toFixed(2),
+        paymentMethod: paymentMethod,
+    };
+    await db.addOrder(newOrderData);
+    setOrders(await db.getOrders()); // Refresh orders
+    handleSaveAddress(shippingDetails);
+    setCartItems([]);
+    setCurrentPage(Page.OrderConfirmation);
+  };
+  
+  const handleSaveAddress = (address: ShippingDetails) => {
+    if (!addresses.some(a => a.address === address.address && a.name === address.name)) {
+        setAddresses(prev => [...prev, address]);
+    }
+  };
+  
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+     if (query.trim() === '') {
+        setSearchResults([]);
+        if (currentPage === Page.Search) {
+          setCurrentPage(Page.Home);
         }
-    }, [currentPage]);
-
-    const handleAddToCart = (product: Product) => {
-        setCartItems(prevItems => [...prevItems, product]);
-    };
-
-    const handleRemoveFromCart = (productId: number) => {
-        setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
-    };
-
-    const handleBuyNow = (product: Product) => {
-        setCheckoutItems([product]); // Store the product for checkout
-        if (isLoggedIn) {
-            setCurrentPage(Page.Checkout);
-        } else {
-            setCurrentPage(Page.Login);
-        }
-    };
-    
-    const handleProceedToCheckout = () => {
-        if (cartItems.length > 0) {
-            setCheckoutItems(cartItems);
-            if (isLoggedIn) {
-                setCurrentPage(Page.Checkout);
-            } else {
-                setCurrentPage(Page.Login);
-            }
-        }
-    };
-
-    const handleCheckoutSubmit = (details: ShippingDetails) => {
-        if (checkoutItems.length > 0) {
-            const totalPrice = checkoutItems.reduce((total, item) => total + parseFloat(item.price), 0).toFixed(2);
-            const newOrder: Order = {
-                id: new Date().getTime().toString(),
-                products: checkoutItems,
-                shippingDetails: details,
-                orderDate: new Date().toISOString(),
-                totalPrice: totalPrice,
-            };
-            setOrderHistory(prev => [newOrder, ...prev]);
-
-            // Remove checked out items from the cart
-            const checkedOutIds = new Set(checkoutItems.map(item => item.id));
-            setCartItems(prev => prev.filter(item => !checkedOutIds.has(item.id)));
-        }
-        setCheckoutItems([]);
-        // Page navigation is handled inside CheckoutPage after submission animation
-    };
-
-    const handleSaveAddress = (address: ShippingDetails) => {
-        setUserAddresses(prev => [...prev, address]);
-    };
-
-    const handleLoginSuccess = (user: User) => {
-        setCurrentUser(user);
-        if (checkoutItems.length > 0) {
-            setCurrentPage(Page.Checkout);
-        } else {
-            setCurrentPage(Page.Home);
-        }
-    };
-
-    const handleLogout = () => {
-        setCurrentUser(null);
-        setIsSidebarOpen(false); // Close sidebar on logout
-        setCurrentPage(Page.Home);
-    };
-    
-    const navigateAndCloseSidebar = (page: Page) => {
-        setCurrentPage(page);
-        setIsSidebarOpen(false);
-    };
-
-    const renderPage = () => {
-        switch (currentPage) {
-            case Page.Home:
-                return (
-                    <>
-                        <Hero onShopNow={() => setCurrentPage(Page.Stickers)} />
-                        <div className="container mx-auto px-4 py-16">
-                            <h2 className="text-3xl font-bold text-center text-gray-800 mb-2">Featured Products</h2>
-                            <p className="text-center text-gray-500 mb-12">Handpicked for you, from our best collections.</p>
-                            <ProductGrid products={ALL_PRODUCTS.slice(0, 6)} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} />
-                        </div>
-                        <WelcomeBanner onViewHomepage={() => setCurrentPage(Page.Home)} />
-                    </>
-                );
-            case Page.Stickers:
-            case Page.PhotoPrints:
-                return (
-                    <div className="container mx-auto px-4 py-16">
-                        <h1 className="text-4xl font-extrabold text-center text-gray-800 mb-4 capitalize">{currentPage.toLowerCase().replace('_', ' ')}</h1>
-                        <p className="text-center text-gray-500 mb-12 max-w-2xl mx-auto">
-                            {currentPage === Page.Stickers 
-                                ? "Discover our unique collection of high-quality vinyl stickers. Perfect for personalizing your life." 
-                                : "Turn your digital photos into beautiful, tangible memories with our premium printing services."
-                            }
-                        </p>
-                        <ProductGrid products={filteredProducts} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} />
-                    </div>
-                );
-            case Page.Login:
-            case Page.SignUp:
-                return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={currentPage} />;
-            case Page.Cart:
-                return <CartPage cartItems={cartItems} onRemoveFromCart={handleRemoveFromCart} onStartShopping={() => setCurrentPage(Page.Home)} onProceedToCheckout={handleProceedToCheckout} />;
-            case Page.Checkout:
-                 if (!isLoggedIn) {
-                    return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.Login} />;
-                }
-                return checkoutItems.length > 0 ? (
-                    <CheckoutPage
-                        products={checkoutItems}
-                        onCheckoutSubmit={handleCheckoutSubmit}
-                        onBack={() => setCurrentPage(Page.Stickers)}
-                        onSuccess={() => setCurrentPage(Page.Orders)}
-                    />
-                ) : (
-                    <div className="text-center py-20">
-                        <p>No product selected for checkout.</p>
-                         <button onClick={() => setCurrentPage(Page.Stickers)} className="mt-4 px-6 py-2 bg-purple-600 text-white font-semibold rounded-full hover:bg-purple-700">
-                            Continue Shopping
-                        </button>
-                    </div>
-                );
-            case Page.UserProfile:
-                return <UserProfilePage user={currentUser} />;
-            case Page.Orders:
-                return <OrdersPage orders={orderHistory} onShopNow={() => setCurrentPage(Page.Home)} />;
-            case Page.Addresses:
-                return <AddressesPage addresses={userAddresses} onSaveAddress={handleSaveAddress} />;
-            default:
-                return <Hero onShopNow={() => setCurrentPage(Page.Stickers)} />;
-        }
-    };
-
-    return (
-        <div className="bg-gray-50 min-h-screen">
-            <Header 
-                currentPage={currentPage} 
-                setCurrentPage={setCurrentPage} 
-                cartCount={cartCount}
-                isLoggedIn={isLoggedIn}
-                onLogout={handleLogout}
-                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-            />
-             <Sidebar 
-                isOpen={isSidebarOpen} 
-                onClose={() => setIsSidebarOpen(false)}
-                user={currentUser}
-                onLogout={handleLogout}
-                onNavigate={navigateAndCloseSidebar}
-            />
-            <main>
-                {renderPage()}
-            </main>
-            <Footer />
-        </div>
+        return;
+    }
+    const results = products.filter(p =>
+        p.name.toLowerCase().includes(query.toLowerCase()) ||
+        p.description.toLowerCase().includes(query.toLowerCase())
     );
-};
+    setSearchResults(results);
+    setCurrentPage(Page.Search);
+  };
+
+  const handleViewProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setPreviousPage(currentPage);
+    setCurrentPage(Page.ProductDetail);
+  };
+  
+  const handleBackFromDetail = () => {
+    setSelectedProduct(null);
+    setCurrentPage(previousPage);
+  };
+
+  // --- ADMIN HANDLERS ---
+  const handleAddProduct = async (productData: Omit<Product, 'id'>) => {
+    await db.addProduct(productData);
+    setProducts(await db.getProducts());
+  };
+  const handleUpdateProduct = async (product: Product) => {
+    await db.updateProduct(product);
+    setProducts(await db.getProducts());
+  };
+  const handleDeleteProduct = async (productId: number) => {
+    await db.deleteProduct(productId);
+    setProducts(await db.getProducts());
+  };
+  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    await db.updateOrderStatus(orderId, status);
+    setOrders(await db.getOrders());
+  };
+  const handleDeleteUser = async (userId: number) => {
+      await db.deleteUser(userId);
+      setAllUsers(await db.getAllUsers());
+  };
+
+
+  const renderPage = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center min-h-[80vh]">
+          <svg className="animate-spin h-10 w-10 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      );
+    }
+    switch (currentPage) {
+      case Page.Home:
+        return (
+          <>
+            <Hero onShopNow={() => setCurrentPage(Page.Stickers)} />
+            <main className="container mx-auto px-4 py-12">
+               <h2 className="text-3xl font-bold text-center mb-8">Featured Products</h2>
+               <ProductGrid products={products} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} onViewDetails={handleViewProduct} />
+            </main>
+          </>
+        );
+      case Page.Stickers:
+        const stickers = products.filter(p => p.category === 'sticker');
+        return (
+          <main className="container mx-auto px-4 py-12">
+            <h1 className="text-4xl font-extrabold text-center text-gray-800 mb-8">Stickers</h1>
+            <ProductGrid products={stickers} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} onViewDetails={handleViewProduct} />
+          </main>
+        );
+      case Page.PhotoPrints:
+        const photos = products.filter(p => p.category === 'photo');
+        return (
+          <main className="container mx-auto px-4 py-12">
+            <h1 className="text-4xl font-extrabold text-center text-gray-800 mb-8">Photo Prints</h1>
+            <ProductGrid products={photos} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} onViewDetails={handleViewProduct} />
+          </main>
+        );
+      case Page.Login:
+        return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.Login} />;
+      case Page.SignUp:
+        return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.SignUp} />;
+      case Page.Cart:
+        return <CartPage cartItems={cartItems} onRemoveFromCart={handleRemoveFromCart} onStartShopping={() => setCurrentPage(Page.Stickers)} onProceedToCheckout={() => setCurrentPage(Page.Checkout)} />;
+      case Page.Checkout:
+        if (!isLoggedIn) {
+            return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.Login} />;
+        }
+        return <CheckoutPage 
+                    cartItems={cartItems} 
+                    onPlaceOrder={handlePlaceOrder}
+                    userAddresses={addresses} 
+                />;
+      case Page.UserProfile:
+         if (!isLoggedIn) {
+            return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.Login} />;
+        }
+        return <UserProfilePage user={currentUser} />;
+      case Page.Orders:
+         if (!isLoggedIn) {
+            return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.Login} />;
+        }
+        return <OrdersPage orders={orders} onShopNow={() => setCurrentPage(Page.Stickers)} />;
+      case Page.Addresses:
+         if (!isLoggedIn) {
+            return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.Login} />;
+        }
+        return <AddressesPage addresses={addresses} onSaveAddress={handleSaveAddress} />;
+      case Page.OrderConfirmation:
+        return <OrderConfirmationPage onNavigate={() => setCurrentPage(Page.Orders)} />;
+      case Page.Search:
+         return (
+            <main className="container mx-auto px-4 py-12 min-h-[60vh]">
+                <h1 className="text-4xl font-extrabold text-center text-gray-800 mb-2">Search Results</h1>
+                <p className="text-center text-gray-600 mb-8">Showing results for: <span className="font-semibold text-gray-800">"{searchQuery}"</span></p>
+                {searchResults.length > 0 ? (
+                    <ProductGrid products={searchResults} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} onViewDetails={handleViewProduct} />
+                ) : (
+                    <div className="text-center py-16 bg-white rounded-lg shadow-md">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <h2 className="mt-4 text-2xl font-semibold text-gray-700">No products found</h2>
+                        <p className="mt-2 text-gray-500">We couldn't find any products matching your search.</p>
+                    </div>
+                )}
+            </main>
+        );
+      case Page.ProductDetail:
+        if (!selectedProduct) {
+            setCurrentPage(previousPage);
+            return null;
+        }
+        return <ProductDetailPage 
+            product={selectedProduct}
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
+            onBack={handleBackFromDetail}
+        />;
+      case Page.Admin:
+            if (!isAdmin) {
+                setCurrentPage(Page.Home);
+                return null;
+            }
+            return <AdminPage 
+                products={products}
+                users={allUsers}
+                orders={orders}
+                onAddProduct={handleAddProduct}
+                onUpdateProduct={handleUpdateProduct}
+                onDeleteProduct={handleDeleteProduct}
+                onUpdateOrderStatus={handleUpdateOrderStatus}
+                onDeleteUser={handleDeleteUser}
+            />;
+      default:
+        return (
+             <main className="container mx-auto px-4 py-12 text-center">
+                 <h1 className="text-4xl font-bold">Page Not Found</h1>
+             </main>
+        );
+    }
+  };
+
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <Header 
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        cartCount={cartItems.length}
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
+        onToggleSidebar={handleToggleSidebar}
+        onSearch={handleSearch}
+      />
+      <Sidebar 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        user={currentUser}
+        isAdmin={isAdmin}
+        onLogout={handleLogout}
+        onNavigate={handleSidebarNavigate}
+      />
+      <div className="flex-grow">
+        {renderPage()}
+      </div>
+      {![Page.OrderConfirmation, Page.Admin, Page.Login, Page.SignUp, Page.ProductDetail].includes(currentPage) && <Footer />}
+    </div>
+  );
+}
 
 export default App;

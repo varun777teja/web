@@ -1,10 +1,21 @@
 import React from 'react';
-import { Order } from '../types';
+import { Order, OrderStatus } from '../types';
 
 interface OrdersPageProps {
     orders: Order[];
     onShopNow: () => void;
 }
+
+const getStatusColor = (status: OrderStatus) => {
+    switch (status) {
+        case 'Pending': return 'bg-yellow-100 text-yellow-800';
+        case 'Shipped': return 'bg-blue-100 text-blue-800';
+        case 'Delivered': return 'bg-green-100 text-green-800';
+        case 'Cancelled': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+};
+
 
 const OrdersPage: React.FC<OrdersPageProps> = ({ orders, onShopNow }) => {
     return (
@@ -30,9 +41,9 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ orders, onShopNow }) => {
                                 <div>
                                     <div className="flex justify-between items-baseline border-b pb-3 mb-3">
                                         <h3 className="font-bold text-lg text-gray-800">Order #{order.id.slice(-6)}</h3>
-                                        <p className="text-sm text-gray-500">
-                                            {new Date(order.orderDate).toLocaleDateString()}
-                                        </p>
+                                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                                            {order.status}
+                                        </span>
                                     </div>
                                     <div className="space-y-3">
                                         {order.products.map(product => (
@@ -48,14 +59,20 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ orders, onShopNow }) => {
                                         <span className="text-purple-600">${order.totalPrice}</span>
                                     </div>
                                 </div>
-                                {/* Shipping Info */}
-                                <div>
-                                    <h4 className="font-semibold text-gray-800 border-b pb-3 mb-3">Shipping to:</h4>
-                                    <address className="not-italic text-gray-600 text-sm">
-                                        <strong>{order.shippingDetails.name}</strong><br />
-                                        {order.shippingDetails.address}<br />
-                                        {order.shippingDetails.city}, {order.shippingDetails.state} {order.shippingDetails.zip}
-                                    </address>
+                                {/* Shipping & Payment Info */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <h4 className="font-semibold text-gray-800 border-b pb-2 mb-2">Shipping to:</h4>
+                                        <address className="not-italic text-gray-600 text-sm">
+                                            <strong>{order.shippingDetails.name}</strong><br />
+                                            {order.shippingDetails.address}<br />
+                                            {order.shippingDetails.city}, {order.shippingDetails.state} {order.shippingDetails.zip}
+                                        </address>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-gray-800 border-b pb-2 mb-2">Payment Method:</h4>
+                                        <p className="text-gray-600 text-sm">{order.paymentMethod}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

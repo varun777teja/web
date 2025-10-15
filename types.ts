@@ -11,6 +11,10 @@ export enum Page {
   UserProfile = 'USER_PROFILE',
   Orders = 'ORDERS',
   Addresses = 'ADDRESSES',
+  OrderConfirmation = 'ORDER_CONFIRMATION',
+  Search = 'SEARCH',
+  Admin = 'ADMIN',
+  ProductDetail = 'PRODUCT_DETAIL',
 }
 
 export interface Product {
@@ -39,10 +43,15 @@ export interface ShippingDetails {
     zip: string;
 }
 
+export type OrderStatus = 'Pending' | 'Shipped' | 'Delivered' | 'Cancelled';
+
+
 export interface Order {
     id: string;
     products: Product[];
     shippingDetails: ShippingDetails;
     orderDate: string;
     totalPrice: string;
+    paymentMethod: string;
+    status: OrderStatus;
 }

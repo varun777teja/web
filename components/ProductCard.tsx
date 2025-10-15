@@ -5,6 +5,7 @@ interface ProductCardProps {
     product: Product;
     onAddToCart: () => void;
     onBuyNow: () => void;
+    onViewDetails: () => void;
 }
 
 const CheckmarkIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -14,7 +15,7 @@ const CheckmarkIcon: React.FC<{ className: string }> = ({ className }) => (
 );
 
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onBuyNow }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onBuyNow, onViewDetails }) => {
     const [isAdded, setIsAdded] = useState(false);
 
     const handleAddToCartClick = () => {
@@ -27,9 +28,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onBuyNo
 
     return (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-all duration-300 group hover:shadow-2xl product-card animate-fade-in-up">
-            <div className="relative overflow-hidden">
+            <div className="relative overflow-hidden cursor-pointer" onClick={onViewDetails}>
                 <img src={product.imageUrl} alt={product.name} className="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-4 p-4">
+                <div 
+                    className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-4 p-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
                      <button 
                         onClick={handleAddToCartClick} 
                         className={`px-5 py-2.5 font-semibold rounded-full transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-100 text-sm flex items-center justify-center space-x-2 ${isAdded ? 'bg-green-500 text-white' : 'bg-white text-gray-800'}`}
@@ -44,7 +48,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onBuyNo
                 </div>
             </div>
             <div className="p-5">
-                <h3 className="text-lg font-bold text-gray-800 truncate">{product.name}</h3>
+                <h3 className="text-lg font-bold text-gray-800 truncate cursor-pointer" onClick={onViewDetails}>{product.name}</h3>
                 <p className="text-sm text-gray-500 mt-1 h-10">{product.description}</p>
                 <div className="flex justify-between items-center mt-4">
                     <span className="text-xl font-extrabold text-purple-600">${product.price}</span>

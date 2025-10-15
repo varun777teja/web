@@ -6,8 +6,8 @@ interface HeaderProps {
     setCurrentPage: (page: Page) => void;
     cartCount: number;
     isLoggedIn: boolean;
-    currentUser: User | null;
     onLogout: () => void;
+    onToggleSidebar: () => void;
 }
 
 const NavLink: React.FC<{ page: Page; currentPage: Page; setCurrentPage: (page: Page) => void; children: React.ReactNode }> = ({ page, currentPage, setCurrentPage, children }) => {
@@ -24,7 +24,7 @@ const NavLink: React.FC<{ page: Page; currentPage: Page; setCurrentPage: (page: 
 };
 
 
-const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage, cartCount, isLoggedIn, currentUser, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage, cartCount, isLoggedIn, onLogout, onToggleSidebar }) => {
     return (
         <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
             <div className="container mx-auto px-4">
@@ -40,15 +40,11 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage, cartCount,
                     </nav>
                     <div className="flex items-center space-x-4">
                         {isLoggedIn ? (
-                             <div className="flex items-center space-x-3">
-                                <span className="text-sm font-medium text-gray-700 hidden sm:block">Welcome, {currentUser?.name}!</span>
-                                <button
-                                    onClick={onLogout}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-full hover:bg-purple-700 transition-colors"
-                                >
-                                    Logout
-                                </button>
-                            </div>
+                            <button onClick={onToggleSidebar} className="text-gray-600 hover:text-purple-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            </button>
                         ) : (
                             <button
                                 onClick={() => setCurrentPage(Page.Login)}
@@ -57,7 +53,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage, cartCount,
                                 Login
                             </button>
                         )}
-                        <div className="relative cursor-pointer">
+                        <button onClick={() => setCurrentPage(Page.Cart)} className="relative cursor-pointer">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
@@ -66,7 +62,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage, cartCount,
                                     {cartCount}
                                 </span>
                             )}
-                        </div>
+                        </button>
                          {/* Mobile menu button could be added here */}
                     </div>
                 </div>

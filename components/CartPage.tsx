@@ -1,15 +1,16 @@
 import React from 'react';
-import { Product } from '../types';
+import { CartItem } from '../types';
 
 interface CartPageProps {
-    cartItems: Product[];
+    cartItems: CartItem[];
     onRemoveFromCart: (productId: number) => void;
+    onUpdateQuantity: (productId: number, newQuantity: number) => void;
     onStartShopping: () => void;
     onProceedToCheckout: () => void;
 }
 
-const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveFromCart, onStartShopping, onProceedToCheckout }) => {
-    const totalPrice = cartItems.reduce((total, item) => total + parseFloat(item.price), 0).toFixed(2);
+const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveFromCart, onUpdateQuantity, onStartShopping, onProceedToCheckout }) => {
+    const totalPrice = cartItems.reduce((total, item) => total + (parseFloat(item.product.price) * item.quantity), 0).toFixed(2);
 
     return (
         <div className="container mx-auto px-4 py-12 min-h-[60vh]">
@@ -29,17 +30,23 @@ const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveFromCart, onStar
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6 space-y-4">
                         {cartItems.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg animate-fade-in-up">
-                                <div className="flex items-center space-x-4">
-                                    <img src={item.imageUrl} alt={item.name} className="w-20 h-20 object-cover rounded-md" />
+                            <div key={item.product.id} className="flex flex-col sm:flex-row items-center justify-between p-4 border rounded-lg animate-fade-in-up">
+                                <div className="flex items-center space-x-4 mb-4 sm:mb-0">
+                                    <img src={item.product.imageUrl} alt={item.product.name} className="w-20 h-20 object-cover rounded-md" />
                                     <div>
-                                        <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                                        <p className="text-sm text-gray-500">{item.category}</p>
+                                        <h3 className="font-semibold text-gray-800">{item.product.name}</h3>
+                                        <p className="text-sm text-gray-500">{item.product.category}</p>
+                                        <p className="text-sm text-gray-700 font-medium sm:hidden mt-2">${item.product.price} each</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center space-x-6">
-                                    <span className="font-bold text-lg text-gray-800">${item.price}</span>
-                                    <button onClick={() => onRemoveFromCart(item.id)} className="text-red-500 hover:text-red-700 transition-colors">
+                                <div className="flex items-center space-x-4 sm:space-x-6">
+                                    <div className="flex items-center border border-gray-300 rounded-full">
+                                        <button onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)} className="px-3 py-1 text-lg font-bold text-gray-600 hover:bg-gray-100 rounded-l-full">-</button>
+                                        <span className="px-4 text-md font-semibold w-12 text-center">{item.quantity}</span>
+                                        <button onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)} className="px-3 py-1 text-lg font-bold text-gray-600 hover:bg-gray-100 rounded-r-full">+</button>
+                                    </div>
+                                    <span className="font-bold text-lg text-gray-800 w-20 text-center">${(parseFloat(item.product.price) * item.quantity).toFixed(2)}</span>
+                                    <button onClick={() => onRemoveFromCart(item.product.id)} className="text-red-500 hover:text-red-700 transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>

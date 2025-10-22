@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Product, ShippingDetails } from '../types';
+import { Product, ShippingDetails, CartItem } from '../types';
 
 interface CheckoutPageProps {
-    cartItems: Product[];
+    cartItems: CartItem[];
     onPlaceOrder: (shippingDetails: ShippingDetails, paymentMethod: string) => void;
     userAddresses: ShippingDetails[];
 }
@@ -30,7 +30,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, onPlaceOrder, us
     const [isAddingNew, setIsAddingNew] = useState(userAddresses.length === 0);
     const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
 
-    const totalPrice = cartItems.reduce((total, item) => total + parseFloat(item.price), 0).toFixed(2);
+    const totalPrice = cartItems.reduce((total, item) => total + (parseFloat(item.product.price) * item.quantity), 0).toFixed(2);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setIsAddingNew(true);
@@ -148,15 +148,15 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, onPlaceOrder, us
                     <h2 className="text-2xl font-bold text-gray-800 mb-6">Your Order</h2>
                     <div className="space-y-4">
                         {cartItems.map(item => (
-                            <div key={item.id} className="flex justify-between items-center">
+                            <div key={item.product.id} className="flex justify-between items-center">
                                 <div className="flex items-center space-x-3">
-                                    <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-md" />
+                                    <img src={item.product.imageUrl} alt={item.product.name} className="w-16 h-16 object-cover rounded-md" />
                                     <div>
-                                        <p className="font-semibold text-gray-800">{item.name}</p>
-                                        <p className="text-sm text-gray-500">Qty: 1</p>
+                                        <p className="font-semibold text-gray-800">{item.product.name}</p>
+                                        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                                     </div>
                                 </div>
-                                <span className="font-semibold text-gray-800">${item.price}</span>
+                                <span className="font-semibold text-gray-800">${(parseFloat(item.product.price) * item.quantity).toFixed(2)}</span>
                             </div>
                         ))}
                     </div>

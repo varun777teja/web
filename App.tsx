@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Page, Product, User, ShippingDetails, Order, OrderStatus } from './types';
+import { Page, Product, User, ShippingDetails, Order, OrderStatus, CartItem } from './types';
 import * as db from './db';
 
 import Header from './components/Header';
@@ -21,7 +21,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
   const [previousPage, setPreviousPage] = useState<Page>(Page.Home);
   const [products, setProducts] = useState<Product[]>([]);
-  const [cartItems, setCartItems] = useState<Product[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -52,19 +52,42 @@ function App() {
     fetchInitialData();
   }, []);
 
-  const handleAddToCart = (product: Product) => {
-    setCartItems(prev => [...prev, product]);
+  const handleAddToCart = (product: Product, quantity: number = 1) => {
+    setCartItems(prevCartItems => {
+        const existingItem = prevCartItems.find(item => item.product.id === product.id);
+        if (existingItem) {
+            return prevCartItems.map(item => 
+                item.product.id === product.id 
+                ? { ...item, quantity: item.quantity + quantity } 
+                : item
+            );
+        } else {
+            return [...prevCartItems, { product, quantity }];
+        }
+    });
   };
   
-  const handleBuyNow = (product: Product) => {
-    setCartItems(prev => [...prev, product]);
+  const handleBuyNow = (product: Product, quantity: number = 1) => {
+    handleAddToCart(product, quantity);
     setCurrentPage(Page.Cart);
   };
 
   const handleRemoveFromCart = (productId: number) => {
-    setCartItems(prev => prev.filter(item => item.id !== productId));
+    setCartItems(prev => prev.filter(item => item.product.id !== productId));
   };
   
+  const handleUpdateCartQuantity = (productId: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+        handleRemoveFromCart(productId);
+    } else {
+        setCartItems(prevItems => prevItems.map(item =>
+            item.product.id === productId
+            ? { ...item, quantity: newQuantity }
+            : item
+        ));
+    }
+  };
+
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
     if (user.email === 'nuravhost@outlook.com') {
@@ -91,10 +114,10 @@ function App() {
 
   const handlePlaceOrder = async (shippingDetails: ShippingDetails, paymentMethod: string) => {
     const newOrderData = {
-        products: cartItems,
+        products: cartItems.flatMap(item => Array(item.quantity).fill(item.product)),
         shippingDetails,
         orderDate: new Date().toISOString(),
-        totalPrice: cartItems.reduce((total, item) => total + parseFloat(item.price), 0).toFixed(2),
+        totalPrice: cartItems.reduce((total, item) => total + (parseFloat(item.product.price) * item.quantity), 0).toFixed(2),
         paymentMethod: paymentMethod,
     };
     await db.addOrder(newOrderData);
@@ -177,10 +200,6 @@ function App() {
         return (
           <>
             <Hero onShopNow={() => setCurrentPage(Page.Stickers)} />
-            <main className="container mx-auto px-4 py-12">
-               <h2 className="text-3xl font-bold text-center mb-8">Featured Products</h2>
-               <ProductGrid products={products} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} onViewDetails={handleViewProduct} />
-            </main>
           </>
         );
       case Page.Stickers:
@@ -204,7 +223,7 @@ function App() {
       case Page.SignUp:
         return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.SignUp} />;
       case Page.Cart:
-        return <CartPage cartItems={cartItems} onRemoveFromCart={handleRemoveFromCart} onStartShopping={() => setCurrentPage(Page.Stickers)} onProceedToCheckout={() => setCurrentPage(Page.Checkout)} />;
+        return <CartPage cartItems={cartItems} onRemoveFromCart={handleRemoveFromCart} onUpdateQuantity={handleUpdateCartQuantity} onStartShopping={() => setCurrentPage(Page.Stickers)} onProceedToCheckout={() => setCurrentPage(Page.Checkout)} />;
       case Page.Checkout:
         if (!isLoggedIn) {
             return <LoginPage onLoginSuccess={handleLoginSuccess} initialPage={Page.Login} />;
@@ -254,9 +273,12 @@ function App() {
         }
         return <ProductDetailPage 
             product={selectedProduct}
+            allProducts={products}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onBack={handleBackFromDetail}
+            onNavigate={setCurrentPage}
+            onViewDetails={handleViewProduct}
         />;
       case Page.Admin:
             if (!isAdmin) {
@@ -287,7 +309,7 @@ function App() {
       <Header 
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
-        cartCount={cartItems.length}
+        cartCount={cartItems.reduce((total, item) => total + item.quantity, 0)}
         isLoggedIn={isLoggedIn}
         onLogout={handleLogout}
         onToggleSidebar={handleToggleSidebar}
@@ -304,7 +326,7 @@ function App() {
       <div className="flex-grow">
         {renderPage()}
       </div>
-      {![Page.OrderConfirmation, Page.Admin, Page.Login, Page.SignUp, Page.ProductDetail].includes(currentPage) && <Footer />}
+      {![Page.OrderConfirmation, Page.Admin, Page.Login, Page.SignUp].includes(currentPage) && <Footer />}
     </div>
   );
 }
